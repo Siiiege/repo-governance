@@ -41,7 +41,7 @@ scripts/check-docs.mjs|.py      文档门禁（零依赖，按仓库运行时二
 ## 安装
 
 ```bash
-git clone git@github.com:Siiiege/repo-governance.git ~/.agents/skills/repo-governance
+git clone https://github.com/Siiiege/repo-governance.git ~/.agents/skills/repo-governance
 ```
 
 之后在任意未治理的仓库里对 agent 说「上治理」即可触发；仓库已有完整 AGENTS.md
