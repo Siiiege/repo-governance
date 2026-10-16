@@ -14,7 +14,7 @@
 | 分发资产 | `assets/` 四件 | 原样复制进目标仓库；`development.md` 是分发的任务闭环细则，本仓库自身流程以本文件为准 |
 | 技能内参考 | `references/repo-shapes.md` | 按需读，不复制进目标仓 |
 | 迭代留痕 | `docs/evaluation.md` | 实测记录与设计变更，README 实测节的事实源 |
-| 维护设施 | `test-gate.sh` | 门禁资产的行为回归（13 组 × 2 运行时） |
+| 维护设施 | `test-gate.sh` | 门禁资产的行为回归（14 组 × 2 运行时） |
 
 本仓库自身的治理就是这份轻量文件，没有任务卡与状态页；在本仓库内再套
 repo-governance 全套属于误判。

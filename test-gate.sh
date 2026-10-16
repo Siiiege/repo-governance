@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 门禁回归测试：13 组 PASS/FAIL 用例 × node/python 两运行时。
+# 门禁回归测试：14 组 PASS/FAIL 用例 × node/python 两运行时。
 # 改 check-docs 行为后必跑——门禁自己也只认命令输出。
 set -u
 ASSETS="$(cd "$(dirname "$0")/assets" && pwd)"
@@ -59,6 +59,8 @@ scaffold; mv "$R/docs/tasks/implemented" "$R/docs/tasks/done"; check "目录改�
 scaffold; printf -- '- **任务 ID**：T-20260901-02\n- **状态**：完成（有保留）\n' > "$R/docs/tasks/implemented/2026-09-01-old2.md"; git -C "$R" add -A && git -C "$R" commit -qm "chore: 追加终态卡（T-20260901-02）"; check "终态状态带后缀(前缀匹配)" PASS
 
 scaffold; printf -- '- **任务 ID**：T-20261016-09\n- **状态**：完成\n' > "$R/docs/tasks/implemented/2026-10-16-nocommit.md"; check "幽灵提交号" FAIL
+
+scaffold; printf -- '- **任务 ID**：T-20261014-05\n- **状态**：完成\n' > "$R/docs/tasks/implemented/2026-10-14-body.md"; git -C "$R" add -A && git -C "$R" commit -qm "chore: 标题无任务号" -m "锚在正文 T-20261014-05"; check "锚在提交正文" PASS
 
 scaffold; rm -rf "$R/.git"; check "非git目录有终态卡" FAIL
 

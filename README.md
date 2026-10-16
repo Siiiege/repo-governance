@@ -58,7 +58,7 @@ git clone https://github.com/Siiiege/repo-governance.git ~/.agents/skills/repo-g
 改了门禁脚本后跑回归：
 
 ```bash
-bash test-gate.sh   # 13 组用例 × node/python 双运行时，26 项断言
+bash test-gate.sh   # 14 组用例 × node/python 双运行时，28 项断言
 ```
 
 ## 实测：三轮六仓，执行者与检测者分离
