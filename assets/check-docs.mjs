@@ -140,7 +140,7 @@ for (const ref of new Set(statusText.match(ID_TOKEN) ?? [])) {
 // 6. 幽灵提交号：终态卡的任务 ID 必须在 git 提交信息里命中——卡不记 hash，
 //    提交信息里的任务 ID 是任务↔提交的唯一锚，锚断了要响，不要静默
 if (terminalIds.length) {
-  const git = spawnSync('git', ['log', '--pretty=format:%s'], { encoding: 'utf8' });
+  const git = spawnSync('git', ['log', '--pretty=format:%B'], { cwd: ROOT, encoding: 'utf8' });
   if (git.status !== 0) {
     fail(`git log 不可用（退出码 ${git.status}）——${terminalIds.length} 张终态卡的提交锚无法校验`);
   } else {

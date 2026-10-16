@@ -146,10 +146,11 @@ for ref in sorted(set(ID_TOKEN.findall(status_text))):
 if terminal_ids:
     try:
         subjects = subprocess.run(
-            ["git", "log", "--pretty=format:%s"],
+            ["git", "log", "--pretty=format:%B"],
             capture_output=True,
             text=True,
             check=True,
+            cwd=ROOT,
         ).stdout
         logged_ids = set(ID_TOKEN.findall(subjects))
         for task_id in terminal_ids:
