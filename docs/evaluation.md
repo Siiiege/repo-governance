@@ -122,3 +122,16 @@ assets/development.md「分析子代理（可选派发）」节。
 要求），据此补记；设计来历细节以 development.md 节内容为准。同轮补 test-gate
 用例「锚在提交正文」（标题无任务号、正文带，`%B` 下应 PASS——13 组时无用例压
 住该行为），回归 13 → 14 组（28 用例）全过。
+
+## 设计变更（2026-10-16，维护纪律改不变量式——借鉴成熟 skills 仓库）
+
+初版 AGENTS.md（6f0a8a9）按 skill 输出骨架缩小而成，经属主三轮砍除（元解释、
+开工读单、文件分工均属 no-op 或复述环境），再调研三个公开样本后定稿：
+anthropics/skills 无 AGENTS.md（纯发布仓）；obra/superpowers 是贡献者护栏
+（94% PR 拒绝率喂出的硬规则）；mattpocock/skills 是仓库组织不变量。定稿
+形态「一段定位 + 七条提交前可核对的不变量」：地址、用例数 ×2、双实现一致、
+常量与路径存在、回归 unexpected=0、出处可指认、设计变更同轮留痕。关键转变
+是从习惯式表述（「数字要可回查」）到不变量式（可逐条核对的 must）。
+superpowers 式贡献者护栏暂不上——伤疤未到，抄来是装样子。已识别未做：
+七条中四条（地址、组数、常量、路径）可编进 test-gate.sh 机器化，先例是
+mattpocock 用 `claude plugin validate --strict` 把不变量工具化。
