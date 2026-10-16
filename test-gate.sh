@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 门禁回归测试：11 组 PASS/FAIL 用例 × node/python 两运行时。
+# 门禁回归测试：13 组 PASS/FAIL 用例 × node/python 两运行时。
 # 改 check-docs 行为后必跑——门禁自己也只认命令输出。
 set -u
 ASSETS="$(cd "$(dirname "$0")/assets" && pwd)"
@@ -16,6 +16,9 @@ scaffold() {
   printf '# 项目状态\n\n## 进行中\n\n- T-20261014-01 治理自举\n' > "$R/docs/project-status.md"
   printf -- '- **任务 ID**：T-20261014-01\n- **状态**：进行中\n' > "$R/docs/tasks/2026-10-14-bootstrap.md"
   printf -- '- **任务 ID**：T-20260901-01\n- **状态**：完成\n' > "$R/docs/tasks/implemented/2026-09-01-old.md"
+  git -C "$R" init -q
+  git -C "$R" config user.email t@t && git -C "$R" config user.name t
+  git -C "$R" add -A && git -C "$R" commit -qm "chore: 初始脚手架（T-20260901-01 T-20261014-01）"
 }
 
 check() { # label expect(PASS|FAIL)
@@ -53,7 +56,11 @@ scaffold; sed -i 's/implemented/done/' "$R/docs/tasks/_template.md"; mv "$R/docs
 
 scaffold; mv "$R/docs/tasks/implemented" "$R/docs/tasks/done"; check "目录改名没同步gate" FAIL
 
-scaffold; printf -- '- **任务 ID**：T-20260901-02\n- **状态**：完成（有保留）\n' > "$R/docs/tasks/implemented/2026-09-01-old2.md"; check "终态状态带后缀(前缀匹配)" PASS
+scaffold; printf -- '- **任务 ID**：T-20260901-02\n- **状态**：完成（有保留）\n' > "$R/docs/tasks/implemented/2026-09-01-old2.md"; git -C "$R" add -A && git -C "$R" commit -qm "chore: 追加终态卡（T-20260901-02）"; check "终态状态带后缀(前缀匹配)" PASS
+
+scaffold; printf -- '- **任务 ID**：T-20261016-09\n- **状态**：完成\n' > "$R/docs/tasks/implemented/2026-10-16-nocommit.md"; check "幽灵提交号" FAIL
+
+scaffold; rm -rf "$R/.git"; check "非git目录有终态卡" FAIL
 
 rm -rf "$T"
 echo "汇总: ok=$ok unexpected=$bad"

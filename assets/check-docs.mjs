@@ -2,17 +2,20 @@
 /**
  * 最小文档门禁（任务卡治理）——零依赖，node scripts/check-docs.mjs 直接跑，非 0 退出码 = FAIL。
  * 唯一权威源：治理模板（默认 docs/tasks/_template.md）的 gate 行（<!-- check-docs:states=...;dirs=... -->）。
- * 校验五件事：
+ * 校验六件事：
  *  1. gate 行可解析（缺 states/dirs 直接 FAIL——权威源没了要响，不要静默）
  *  2. 任务状态合法性：状态必须是 states 枚举之一的前缀
  *  3. 目录↔状态一致：终态卡必须在 dirs 声明的子目录里，顶层只放活跃卡
  *  4. 孤儿任务：活跃卡必须登记 docs/project-status.md（新会话靠它发现进行中的活）
  *  5. 幽灵登记 / ID 重复：状态页里的任务 ID 必须对应现存卡；卡与卡之间 ID 不重复
+ *  6. 幽灵提交号：终态卡的任务 ID 必须能在 git 提交信息里命中——任务↔提交的锚
+ *     是提交信息里的任务 ID（卡不记 hash），提交忘带任务号不能静默失联
  * 与 check-docs.py 是同一门禁的两份实现（Node / Python 仓各用其一），改行为两处同步。
  * 调参常量（TEMPLATE_NAME / SKIP_TOP）：与产品文件冲突时按仓改名/加跳过项；改后
  * 本脚本与 skill assets 分叉，回归责任转入库内（自建负例注入测试）。
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +27,7 @@ const TEMPLATE = join(TASKS, TEMPLATE_NAME);
 const STATUS_PAGE = join(ROOT, 'docs', 'project-status.md');
 const STATUS_LINE = /^\s*-\s+\*\*状态\*\*[：:]\s*(\S+)/m;
 const ID_LINE = /^\s*-\s+\*\*任务 ID\*\*[：:]\s*(\S+)/m;
-const ID_TOKEN = /T-\d{8}-\d+/g; // 幽灵登记扫描源；改 ID 格式需同步本正则
+const ID_TOKEN = /T-\d{8}-\d+/g; // 幽灵登记 / 幽灵提交号检查的扫描源；改 ID 格式需同步本正则
 
 const problems = [];
 const fail = (msg) => problems.push(msg);
@@ -70,6 +73,7 @@ const statusText = readFileSync(STATUS_PAGE, 'utf8');
 let active = 0;
 let terminal = 0;
 const ids = new Map(); // 任务 ID → 文件位置（查重 + 幽灵登记反查）
+const terminalIds = []; // 终态卡 ID——幽灵提交号检查对象
 
 const registerId = (id, where) => {
   if (ids.has(id)) fail(`任务 ID 重复：「${id}」同时出现在 ${ids.get(id)} 与 ${where}`);
@@ -88,7 +92,10 @@ for (const [dir, prefix] of Object.entries(TERMINAL_DIRS)) {
     else if (!state.startsWith(prefix)) fail(`tasks/${dir}/${f}：状态「${state}」应为「${prefix}」开头`);
     else terminal++;
     const id = text.match(ID_LINE)?.[1];
-    if (id) registerId(id, `tasks/${dir}/${f}`);
+    if (id) {
+      registerId(id, `tasks/${dir}/${f}`);
+      terminalIds.push(id);
+    }
   }
 }
 
@@ -127,6 +134,22 @@ for (const f of readdirSync(TASKS).sort()) {
 for (const ref of new Set(statusText.match(ID_TOKEN) ?? [])) {
   if (!ids.has(ref)) {
     fail(`project-status.md：登记了「${ref}」但没有对应任务卡（幽灵登记——先修卡或删登记，不要倒填空卡）`);
+  }
+}
+
+// 6. 幽灵提交号：终态卡的任务 ID 必须在 git 提交信息里命中——卡不记 hash，
+//    提交信息里的任务 ID 是任务↔提交的唯一锚，锚断了要响，不要静默
+if (terminalIds.length) {
+  const git = spawnSync('git', ['log', '--pretty=format:%s'], { encoding: 'utf8' });
+  if (git.status !== 0) {
+    fail(`git log 不可用（退出码 ${git.status}）——${terminalIds.length} 张终态卡的提交锚无法校验`);
+  } else {
+    const loggedIds = new Set(git.stdout.match(ID_TOKEN) ?? []);
+    for (const id of terminalIds) {
+      if (!loggedIds.has(id)) {
+        fail(`${ids.get(id)}：git 提交信息中搜不到「${id}」（幽灵提交号——提交信息必须带任务 ID，否则该任务从 git log --grep 检索面静默消失）`);
+      }
+    }
   }
 }
 

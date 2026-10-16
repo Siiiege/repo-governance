@@ -3,18 +3,21 @@
 """最小文档门禁（任务卡治理）——零依赖，python3 scripts/check-docs.py 直接跑，非 0 退出码 = FAIL。
 
 唯一权威源：治理模板（默认 docs/tasks/_template.md）的 gate 行（<!-- check-docs:states=...;dirs=... -->）。
-校验五件事：
+校验六件事：
  1. gate 行可解析（缺 states/dirs 直接 FAIL——权威源没了要响，不要静默）
  2. 任务状态合法性：状态必须是 states 枚举之一的前缀
  3. 目录↔状态一致：终态卡必须在 dirs 声明的子目录里，顶层只放活跃卡
  4. 孤儿任务：活跃卡必须登记 docs/project-status.md（新会话靠它发现进行中的活）
  5. 幽灵登记 / ID 重复：状态页里的任务 ID 必须对应现存卡；卡与卡之间 ID 不重复
+ 6. 幽灵提交号：终态卡的任务 ID 必须能在 git 提交信息里命中——任务↔提交的锚
+    是提交信息里的任务 ID（卡不记 hash），提交忘带任务号不能静默失联
 
 与 check-docs.mjs 是同一门禁的两份实现（Node / Python 仓各用其一），改行为两处同步。
 调参常量（TEMPLATE_NAME / SKIP_TOP）：与产品文件冲突时按仓改名/加跳过项；改后
 本脚本与 skill assets 分叉，回归责任转入库内（自建负例注入测试）。
 """
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,7 +33,7 @@ STATUS_PAGE = ROOT / "docs" / "project-status.md"
 STATUS_LINE = re.compile(r"^\s*-\s+\*\*状态\*\*[：:]\s*(\S+)", re.M)
 ID_LINE = re.compile(r"^\s*-\s+\*\*任务 ID\*\*[：:]\s*(\S+)", re.M)
 GATE_LINE = re.compile(r"<!--\s*check-docs:\s*([^>]*?)\s*-->")
-ID_TOKEN = re.compile(r"T-\d{8}-\d+")  # 幽灵登记扫描源；改 ID 格式需同步本正则
+ID_TOKEN = re.compile(r"T-\d{8}-\d+")  # 幽灵登记 / 幽灵提交号检查的扫描源；改 ID 格式需同步本正则
 
 problems = []
 
@@ -74,6 +77,7 @@ status_text = STATUS_PAGE.read_text(encoding="utf-8")
 active = 0
 terminal = 0
 ids = {}  # 任务 ID → 文件位置（查重 + 幽灵登记反查）
+terminal_ids = []  # 终态卡 ID——幽灵提交号检查对象
 
 
 def register_id(task_id, where):
@@ -102,6 +106,7 @@ for dir_name, prefix in TERMINAL_DIRS.items():
         id_m = ID_LINE.search(text)
         if id_m:
             register_id(id_m.group(1), f"tasks/{dir_name}/{f.name}")
+            terminal_ids.append(id_m.group(1))
 
 # 4. 顶层：只放活跃卡；活跃卡必须登记状态页（防孤儿）
 for entry in sorted(TASKS.iterdir()):
@@ -135,6 +140,26 @@ for entry in sorted(TASKS.iterdir()):
 for ref in sorted(set(ID_TOKEN.findall(status_text))):
     if ref not in ids:
         fail(f"project-status.md：登记了「{ref}」但没有对应任务卡（幽灵登记——先修卡或删登记，不要倒填空卡）")
+
+# 6. 幽灵提交号：终态卡的任务 ID 必须在 git 提交信息里命中——卡不记 hash，
+#    提交信息里的任务 ID 是任务↔提交的唯一锚，锚断了要响，不要静默
+if terminal_ids:
+    try:
+        subjects = subprocess.run(
+            ["git", "log", "--pretty=format:%s"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        logged_ids = set(ID_TOKEN.findall(subjects))
+        for task_id in terminal_ids:
+            if task_id not in logged_ids:
+                fail(
+                    f"{ids[task_id]}：git 提交信息中搜不到「{task_id}」（幽灵提交号——"
+                    f"提交信息必须带任务 ID，否则该任务从 git log --grep 检索面静默消失）"
+                )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        fail(f"git log 不可用（{e}）——{len(terminal_ids)} 张终态卡的提交锚无法校验")
 
 if problems:
     print(f"check-docs: FAIL（{len(problems)} 处）", file=sys.stderr)
