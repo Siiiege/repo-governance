@@ -1,0 +1,21 @@
+#!/bin/sh
+# 提交锚门禁：每笔提交信息必须带真实任务 ID（T-…）或决策锚（D-NNN），且暂存
+# 终态卡被本笔信息锚定——任务↔提交的唯一锚在提交信息里，忘带即从
+# git log --grep 检索面静默消失。由 check-docs 的 --commit-msg 模式从本笔暂存快照取证；
+# 全仓态校验已在 pre-commit 跑过，两种模式职责分离（混跑会把未入本笔的
+# 工作区状态当校验输入，误伤）。
+# 合并提交豁免：git 自动生成的合并信息是结构性提交，不承载任务锚。
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  exit 0
+fi
+
+if [ -f scripts/check-docs.mjs ]; then
+  node scripts/check-docs.mjs --commit-msg "$1"
+elif command -v python >/dev/null 2>&1; then
+  python scripts/check-docs.py --commit-msg "$1"
+else
+  py scripts/check-docs.py --commit-msg "$1"
+fi

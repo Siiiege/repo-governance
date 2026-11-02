@@ -2,3 +2,4 @@
 *.sh text eol=lf
 *.mjs text eol=lf
 *.py text eol=lf
+assets/hooks/* text eol=lf

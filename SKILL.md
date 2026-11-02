@@ -24,16 +24,21 @@ docs/
 ├─ project-status.md       基线 / 进行中 / 待验收 / 待办 / 勘误（状态层）
 ├─ architecture/source-map.md   分层与「改需求从哪里下手」
 ├─ workflow/development.md      任务闭环细则（复制 assets/development.md 后按仓微调）
-├─ decisions/decision-log.md    四字段决策记录
+├─ workflow/branch-workflow.md  分支与提交信息约定（复制 assets/branch-workflow.md 后按仓微调）
+├─ decisions/decision-log.md    四字段决策记录（格式见设计决定 4，首条随脚手架落地）
 └─ tasks/
    ├─ _template.md         任务卡模板（gate 行 = 门禁权威源）
    ├─ implemented/         终态：完成
    └─ rejected/            终态：已取消
-scripts/check-docs.mjs|.py  文档门禁（按仓库运行时二选一，两份实现行为一致）
+scripts/
+├─ check-docs.mjs|.py      文档门禁（按仓库运行时二选一，两份实现行为一致）
+└─ hooks/                  pre-commit（全仓态快检）+ commit-msg（提交锚校验）
 ```
 
-四件 assets 按仓微调后落位：[_template.md](assets/_template.md)、
+六件 assets 按仓微调后落位：[_template.md](assets/_template.md)、
 [development.md](assets/development.md)（任务闭环细则，复制为 `docs/workflow/development.md`）、
+[branch-workflow.md](assets/branch-workflow.md)（复制为 `docs/workflow/branch-workflow.md`）、
+[hooks/](assets/hooks) 两个钩子（复制为 `scripts/hooks/`，Unix 需 `chmod +x`）、
 门禁按仓库运行时二选一——[check-docs.mjs](assets/check-docs.mjs)（Node）或
 [check-docs.py](assets/check-docs.py)（Python 3）；其余文件按下表写。
 
@@ -45,8 +50,8 @@ scripts/check-docs.mjs|.py  文档门禁（按仓库运行时二选一，两份�
 | 唯一事实入口 | 表：每类事实一个文件 | 双写消除的索引层 |
 | 硬约束 | 端口 / 环境 / 资料安全等不可违反项 | 常载上下文的护栏 |
 | 工作闭环 | 需求→卡→实现→验证→审查（可选）→入档 一句话 + 细则指针 | 流程总纲 |
-| 验证纪律 | 单一总门禁 + 四类验证 + 只认命令输出 | 完成判据机器化 |
-| 提交纪律 | 前缀约定 + 提交信息带任务 ID + 只 add 本任务文件 + 分支模型指针 | 历史可读、任务可检索（git log --grep） |
+| 验证纪律 | 总门禁 + 四类验证 + 验收标准 | 检查结果可复验，完成范围明确 |
+| 提交纪律 | 前缀约定 + 提交信息带任务 ID 或决策锚 + 只 add 本任务文件 + 分支模型指针（branch-workflow.md） | 历史可读、任务可检索（git log --grep）；commit-msg 钩子当场拦无锚提交 |
 | 需确认事项 | 删除 / 覆盖 / 发版 / 重提否决案 | 不可逆动作的刹车 |
 | 被否决速查 | decision-log 摘要 + 链接 | 防新会话重提已否决方案 |
 
@@ -61,31 +66,49 @@ scripts/check-docs.mjs|.py  文档门禁（按仓库运行时二选一，两份�
 3. **终态冻结 + 勘误追加**：完成 / 取消的卡 `git mv` 入子目录后正文不可改（冻结从
    入目录起算，收尾提交保证入目录前正文已定稿）；后续证伪只在文末**追加**勘误节
    并回填提交号。追溯靠 git 历史，正文只描述单一时间点。
-4. **决策四字段**：背景 → 决定（原地重写，不追加变更史）→ 备选（只记真实评估过的）
-   → 重开条件（否决案必填，指向可观察事件）。没有重开条件的否决案，要么永久绑架要么被无据翻案。
+4. **决策四字段，格式机器可校验**：背景 → 决定（原地重写，不追加变更史）→ 备选
+   （只记真实评估过的）→ 重开条件（否决案必填，指向可观察事件）。条目固定格式：
+   `### D-NNN <标题>` 挂在 `## 节` 下（被否决条目所在节名以「被否决」开头），字段
+   是 `- **字段**：` 列表行——门禁校验此格式：缺背景/决定/备选、否决类缺重开
+   条件、一条不剩都 FAIL。没有重开条件的否决案，要么永久绑架要么被无据翻案；
+   首条决策（「引入本治理体系」）随脚手架落地，决策锚（D-NNN）从第一天就可挂进
+   提交信息。
 5. **单一总门禁 + 只认命令输出**：类型 / lint / 测试 / 构建 / 文档门禁串成一个命令，
-   「完成」只认退出码。自述式完成是 agent 最常见的虚报形态。总门禁进 CI 才是外部
+   本地检查通过以退出码为证；任务完成还须满足卡内验收标准与所需验证。总门禁进 CI 才是外部
    强制，本地命令与 pre-commit 只是快反馈。
 6. **四类验证分别记录，互不替代**：本地可重复 / 真实联调 / 真机 / 部署；
    缺环境就在状态页「待验收」登记并明说。「测试过了」经常被悄悄扩展成「验证过了」。
 7. **影响面分析前置**：非文案级改动先界定影响半径——引用方全仓 grep（含模板与测试）、
    依赖方（源码 import **与直接依赖的 peer 声明**）、受影响文档与调用方；结论写进任务卡再动手。
    agent 的源码 grep 看不见 peer 依赖（terser 误删先例）。
-8. **反沉积三件套**：同轮清理（每次改动的同一轮完成文档卫生）、双写消除（同一事实只留一个入口）、
+8. **反沉积三件套**：同轮清理（只维护本次改动直接影响的文档）、双写消除（同一事实只留一个入口）、
    环境值不进文档（单文件可查的值以文件为准，写进来的副本必漂移）。文档的默认命运是长胖，
-   规则要主动对抗——索引腐烂、缓存漂移、基线沉积都是这么来的。
+   规则要主动对抗——索引腐烂、缓存漂移、基线沉积都是这么来的。文档网最先腐烂的形态是
+   断链：入口文档（AGENTS.md 与 docs 骨架）的相对链接死链即 FAIL，机器兜底。
 9. **分层规则**：仓库自有 AGENTS.md 工作流时以仓库为准，本技能只服务未治理的仓库。
-10. **任务↔提交锚 = 提交信息里的任务 ID，卡不记 hash**：hash 在提交前不可知，
-    单提交收尾时写进卡只能事后回填（rsra 实测回填提交占比 40%，且违反入目录即
-    冻结）；任务 ID 建卡时已有，提交那一刻锚就成立，`git log --grep=T-…` 随时可查。
-    门禁对称兜底：幽灵登记查「状态页 ID 必须有卡」，幽灵提交号查「终态卡 ID 必须
-    有提交」——提交忘带任务号不再静默失联。注意砍 hash 的理由是自引用与仪式成本，
-    不是「双写」——hash 是内容寻址指针，不腐烂。
+10. **任务↔提交锚 = 提交信息里的任务 ID，卡不记 hash**：任务 ID 在建卡时已有，
+    避免本提交 hash 提交前不可知导致的回填。commit-msg 校验锚在**本笔暂存快照**中
+    存在，且暂存终态卡被本笔信息锚定；任务卡、决策记录与 gate 配置均从 index 读取。
+    合并提交豁免。由此支持代码 + 定稿卡 + 目录落位 + 状态页撤登记单提交收尾。
+    全仓态不做 git log 反查，因为本笔提交尚未进入历史。修改校验时机或锚来源前，
+    读 [实测记录](docs/evaluation.md) 中两次 2026-10-16 与 2026-10-22 的提交锚修订。
 11. **分析子代理串行派发**：建卡与影响面分析可派子代理——上下文隔离，全仓 grep
     的中间结果不占主会话（主会话还要留上下文做实现与收尾）。但必须串行：影响面
     grep 的输入是需求分析定稿的改动点，产出物正交 ≠ 执行可并行。细则落
     development.md「分析子代理」节；「允许修改范围」的合成永远留在主会话——子代理
     给候选不拍板，与「审查不占状态」同一逻辑。
+12. **按校验时刻选择输入**：工作区快检对未 add 草稿的孤儿登记降级提醒，已进
+    index 的卡须登记；git 不可用时 fail-closed。提交侧则只从本笔暂存快照取证，
+    工作区中未暂存的任务、决策或配置变更不影响提交锚判断。并行同仓时先读
+    [references/parallel-sessions.md](references/parallel-sessions.md)。
+
+## 机器检查与流程约定
+
+check-docs 检查任务状态 / 目录归属 / 登记与 ID 一致性、决策必需字段存在、入口
+相对链接目标存在；提交时检查暂存快照中的锚及终态卡锚定。PASS 只证明这些结构
+断言成立，不证明文档语义与代码一致、验证记录真实、验收标准满足或终态正文未改。
+正文冻结、影响面分析、独立审查及验收证据由执行者按流程核对；总门禁的退出码仅
+证明实际接入的检查项通过，覆盖面须如实记录。
 
 ## 实施步骤
 
@@ -102,23 +125,33 @@ scripts/check-docs.mjs|.py  文档门禁（按仓库运行时二选一，两份�
    - 纯文档仓，或本机缺编译工具链（无可跑检查）→ 「无可跑检查的仓」
    - 载体选了 Makefile 但本机没有 make → 「Makefile 死配置」
 2. **落文件**：复制 assets——`_template.md` → `docs/tasks/_template.md`、
-   `development.md` → `docs/workflow/development.md`、按运行时二选一
-   `check-docs.mjs` / `check-docs.py` → `scripts/`——`development.md` 的按仓微调
+   `development.md` → `docs/workflow/development.md`、`branch-workflow.md` →
+   `docs/workflow/branch-workflow.md`、`hooks/` 两个钩子 → `scripts/hooks/`
+   （Unix 需 `chmod +x scripts/hooks/*`）、按运行时二选一
+   `check-docs.mjs` / `check-docs.py` → `scripts/`——`development.md` /
+   `branch-workflow.md` 的按仓微调
    属受控分叉，改动点登记进首卡「已完成内容」或 decision-log；按骨架写 AGENTS.md
    与 docs/
-   其余文件（内容按仓库实际填，暂缺的节写「暂无」保结构）。`implemented/`、
-   `rejected/` 随首张终态卡自然创建——git 不跟踪空目录，要占位用 `.gitkeep`。
-   Windows 环境建议加 `.gitattributes` 把 `*.sh` / `*.mjs` 钉死 LF，防 autocrlf
-   检出后脚本失效。完成判据：文件树齐。
+   其余文件（内容按仓库实际填，暂缺的节写「暂无」保结构）。decision-log 落地
+   首条「引入本治理体系」（D-01，四字段齐全——门禁校验条目存在与四字段格式）。
+   `implemented/`、`rejected/` 随首张终态卡自然创建——git 不跟踪空目录，要占位用
+   `.gitkeep`。Windows 环境建议加 `.gitattributes` 把 `*.sh` / `*.mjs` /
+   `scripts/hooks/*` 钉死 LF，防 autocrlf 检出后脚本失效。完成判据：文件树齐。
 3. **接线**：总门禁命令追加 check-docs（`.mjs` 用 `node scripts/check-docs.mjs`，
-   `.py` 用 `python scripts/check-docs.py`）。CI 接线分场景：可推送仓把总门禁挂进
+   `.py` 用 `python scripts/check-docs.py`）。钩子绑定：Node 仓在 package.json 加
+   `"prepare": "git config core.hooksPath scripts/hooks || exit 0"`（npm install
+   即生效，新 clone 零手工），pre-commit 走全仓态快检、commit-msg 走提交锚校验；
+   非 Node 仓一次性手工 `git config core.hooksPath scripts/hooks`。CI 接线分场景：
+   可推送仓把总门禁挂进
    CI 才是外部强制；上游只读克隆 / 永不推送的仓**不挂**（挂了是永不运行的死配置），
-   降级为决策记录 + 待办，重开条件 = 获得可推送的自主远端（fork）。pre-commit
-   （可选）只是快反馈。完成判据：跑总门禁，check-docs 输出 PASS。
+   降级为决策记录 + 待办，重开条件 = 获得可推送的自主远端（fork）——钩子不受此限，
+   本地提交即强制。完成判据：跑总门禁，check-docs 输出 PASS；一笔带任务 ID 的
+   提交通过、一笔无锚提交被 commit-msg 钩子拦下（负例演示）。
 4. **首卡自举**：给「引入治理」本身建第一张任务卡，按 development.md 任务闭环走完整循环——
    这是对系统的第一次实测；收尾前做负例注入自测——至少两类违规（孤儿卡 /
-   终态滞留顶层 / 幽灵提交号任选），各自看到 check-docs FAIL 后删除——证明门禁
-   咬人，不是摆设。
+   终态滞留顶层 / 无锚提交任选），各自看到 check-docs FAIL 后删除——证明门禁
+   咬人，不是摆设。首卡收尾即单提交收尾的首次实测：代码 + 定稿卡 + 落目录 +
+   状态页撤登记同笔，提交信息带首卡任务 ID。
    完成判据：首卡入终态目录、门禁过。
 5. **入口登记**：AGENTS.md 开工必读指向状态页。完成判据：新会话冷启动能沿文档找到当前状态。
 
@@ -127,7 +160,10 @@ scripts/check-docs.mjs|.py  文档门禁（按仓库运行时二选一，两份�
 状态页章节名、门禁命令名可按仓库习惯改。状态名 / 终态目录名要改就改 `_template.md`
 的 gate 行——枚举与目录校验随之生效，保持 `states` / `dirs` 两段格式即可。任务 ID
 默认约定 `T-YYYYMMDD-NN`，改格式需同步改门禁脚本里的 ID_TOKEN 正则（幽灵登记 /
-幽灵提交号检查的扫描源——后者扫 git 提交信息）。两份门禁实现（`.mjs` / `.py`）行为必须一致，改一处同步另一处。唯一不能动的是「gate 行驱动门禁」这个机制本身。
+提交锚校验的扫描源）；决策锚格式（DECISION_TOKEN，默认 D-NNN 至少两位）随
+decision-log 条目号改；死链检查的入口清单是门禁脚本的 ENTRY_DOCS 常量，按仓库
+形状增删。合并提交豁免逻辑在钩子里（`scripts/hooks/commit-msg` 的 MERGE_HEAD
+检查），改豁免规则改钩子。两份门禁实现（`.mjs` / `.py`）行为必须一致，改一处同步另一处。唯一不能动的是「gate 行驱动门禁」这个机制本身。
 门禁脚本顶部的 `TEMPLATE_NAME` /
 `SKIP_TOP` 常量是模板文件名与顶层跳过清单的调参位（与产品文件冲突时改），改后
 仓内门禁与 skill assets 分叉——回归责任转入库内，自建负例注入测试。

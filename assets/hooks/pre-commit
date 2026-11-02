@@ -1,0 +1,15 @@
+#!/bin/sh
+# 提交前快门禁：只跑秒级的文档门禁全仓态校验；完整总门禁仍在任务收尾跑。
+# 绑定：git config core.hooksPath scripts/hooks（Node 仓可由 package.json 的
+# prepare 脚本自动化，npm install 即生效）。绕过（--no-verify）是显眼的故意
+# 动作，会留痕。
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+if [ -f scripts/check-docs.mjs ]; then
+  node scripts/check-docs.mjs
+elif command -v python >/dev/null 2>&1; then
+  python scripts/check-docs.py
+else
+  py scripts/check-docs.py
+fi

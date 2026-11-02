@@ -18,8 +18,10 @@
   归档，目录即清单——不靠手工索引（「做 A 时顺手维护 B」是最先失效的软约束）。
 - **决策记录**（`docs/decisions/`）：每条决策记背景、决定、备选、重开条件；
   被否决的方案也记——不然新会话会把走过的弯路再走一遍。
-- **文档门禁**（`scripts/check-docs.mjs|.py`）：一条命令校验任务卡状态、终态
-  目录归属、孤儿卡。文档和代码对不对得上，交给退出码说话，不靠自觉。
+- **文档门禁**（`scripts/check-docs.mjs|.py` + `scripts/hooks/`）：一条命令校验
+  任务卡状态、终态目录归属、孤儿卡、决策四字段、入口文档死链；提交时由
+  commit-msg 钩子校验每笔提交信息带真实任务 ID 或决策锚。PASS 证明已覆盖的
+  结构断言成立；文档语义、验收证据与终态正文冻结仍按流程审查。
 
 落在仓库里是这个结构：
 
@@ -30,21 +32,25 @@ docs/
 ├─ project-status.md       现在做到哪了：基线 / 进行中 / 待验收 / 待办
 ├─ architecture/source-map.md   代码分层与「改需求从哪里下手」
 ├─ workflow/development.md      一个任务从建卡到收尾的细则
+├─ workflow/branch-workflow.md  分支与提交信息约定
 ├─ decisions/decision-log.md    决策记录
 └─ tasks/                       任务卡（implemented/ 与 rejected/ 存终态卡）
-scripts/check-docs.mjs|.py      文档门禁（零依赖，按仓库运行时二选一）
+scripts/
+├─ check-docs.mjs|.py      文档门禁（零依赖，按仓库运行时二选一）
+└─ hooks/                  pre-commit 快检 + commit-msg 提交锚校验
 ```
 
 ## 核心设计（每条带 why，详见 [SKILL.md](SKILL.md)）
 
-- **只认命令输出，不认自述**：「完成」绑定单一总门禁命令的退出码。自述式完成是
-  agent 最常见的虚报形态。
+- **只认命令输出，不认自述**：本地检查以总门禁退出码为证；任务完成还须满足验收标准与所需验证。
 - **终态冻结 + 勘误追加**：完成/取消的卡入子目录后正文不可改；后续证伪只允许在
   文末追加勘误节。追溯靠 git 历史。
 - **决策四字段**：没有重开条件的否决案，要么永久绑架要么被无据翻案。
 - **反沉积三件套**：同轮清理、双写消除、环境值不进文档。文档的默认命运是长胖。
 - **gate 行 = 门禁唯一权威源**：状态枚举与终态目录映射写在任务卡模板的一行机器
-  注释里，`check-docs` 只认它——改文档即改门禁，规则与校验永不漂移。
+  注释里，`check-docs` 只认它——改该行即改变状态与目录校验；散文说明仍需同步维护。
+- **锚在提交那一刻校验**：任务↔提交的锚是提交信息里的任务 ID（卡不记 hash）；
+  commit-msg 从本笔暂存快照核对锚，拦无锚与不存在的锚，合并提交豁免。
 
 ## 安装
 
@@ -58,7 +64,7 @@ git clone https://github.com/Siiiege/repo-governance.git ~/.agents/skills/repo-g
 改了门禁脚本后跑回归：
 
 ```bash
-bash test-gate.sh   # 14 组用例 × node/python 双运行时，28 项断言
+bash test-gate.sh   # 41 组用例 × node/python 双运行时，82 项断言
 ```
 
 ## 实测：三轮六仓，执行者与检测者分离
